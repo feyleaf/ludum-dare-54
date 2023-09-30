@@ -147,6 +147,7 @@
     <ClInclude Include="game.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="ic_math.h" />
+    <ClInclude Include="rigidbody.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

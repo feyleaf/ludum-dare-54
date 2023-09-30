@@ -76,6 +76,7 @@
 #include <list>
 #include "ic_math.h"
 //#include "ic_pathing.h"
+#include "rigidbody.h"
 #include "canvas.h"
 #include "window.h"
 #include "game.h"

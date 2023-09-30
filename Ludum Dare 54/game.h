@@ -3,14 +3,19 @@
 
 #include "global.h"
 
-struct entity
+struct clutter
 {
 	bool isActive;
-	int textureIndex;
+	sf::Image image;
+	sf::Image silo;
+	sf::Texture texture;
 	sf::Sprite sprite;
-	sf::Vector2f acceleration;
+	float weight;
 	sf::Vector2f velocity;
-	float spinSpeed;
+	sf::Vector2f accel;
+	sf::Vector2f centerPoint;
+	float bounciness;
+	float radius;
 };
 
 
@@ -46,12 +51,29 @@ public:
 	float deltaTime = dtClock.restart().asSeconds();
 	float lastTime = deltaTime;
 	uint32_t randomCount = 0;
+	bool boxCollide = false;
+	bool pixelCollide = false;
 	bool isClicking = false;
+
+	void handleCollision(clutter A, clutter B);
+	void applyGravity(clutter A);
 
 	sf::Sprite playerSprite;
 	sf::Texture playerTex;
 	sf::Image playerImg;
 	sf::Vector2f playerVelocity = { 2.0f, 2.0f };
+
+	std::vector<clutter> clutterPile;
+
+	sf::Sprite objectSprite;
+	sf::Texture objectTex;
+	sf::Image objectImg;
+	sf::Vector2f objectVelocity = { -4.0f, 2.0f };
+
+	RectangularBody rectangle = { sf::Vector2f(60, 60), 1.0f, sf::Vector2f(50, 30), 0.8f };
+	RectangularBody junk = { sf::Vector2f(60, 30), 2.0f, sf::Vector2f(20, 20) , 0.9f};
+
+	//bool areRectanglesColliding(RectangularBody& rect1, RectangularBody& rect2);
 
 	sf::Sprite structureSprite;
 	sf::Texture structureTex;
@@ -59,6 +81,7 @@ public:
 
 	sf::FloatRect screenRect;
 
+	sf::Image makeSilouette(sf::Image& original);
 
 	GameClass(const ic::gameScreen _screen = ic::vm_sms);
 	~GameClass();
