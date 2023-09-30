@@ -15,6 +15,7 @@ struct clutter
 	sf::Vector2f accel;
 	sf::Vector2f centerPoint;
 	float bounciness;
+	float friction;
 	float radius;
 };
 
@@ -55,25 +56,25 @@ public:
 	bool pixelCollide = false;
 	bool isClicking = false;
 
-	void handleCollision(clutter A, clutter B);
-	void applyGravity(clutter A);
+	void handleCollision(clutter& A, clutter& B);
+	void applyGravity(clutter& A, float _dt);
 
 	sf::Sprite playerSprite;
 	sf::Texture playerTex;
 	sf::Image playerImg;
 	sf::Vector2f playerVelocity = { 2.0f, 2.0f };
+	clutter player;
 
 	std::vector<clutter> clutterPile;
 
 	sf::Sprite objectSprite;
 	sf::Texture objectTex;
+	sf::Texture bearTexture;
+	sf::Texture burritoTexture;
+	sf::Texture couchTex;
+	sf::Texture tableTex;
 	sf::Image objectImg;
 	sf::Vector2f objectVelocity = { -4.0f, 2.0f };
-
-	RectangularBody rectangle = { sf::Vector2f(60, 60), 1.0f, sf::Vector2f(50, 30), 0.8f };
-	RectangularBody junk = { sf::Vector2f(60, 30), 2.0f, sf::Vector2f(20, 20) , 0.9f};
-
-	//bool areRectanglesColliding(RectangularBody& rect1, RectangularBody& rect2);
 
 	sf::Sprite structureSprite;
 	sf::Texture structureTex;
