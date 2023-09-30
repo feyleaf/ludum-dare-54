@@ -94,6 +94,9 @@ public:
 	bool handleEvents();
 	void handlePlayerCollision();
 	void renderGame();
+	void handlePlayerInput();
+	bool playerIsOnGround();
+	void updatePlayerPosition();
 
 	GameClass(const ic::gameScreen _screen = ic::vm_sms);
 	~GameClass();
