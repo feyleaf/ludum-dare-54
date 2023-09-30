@@ -17,6 +17,7 @@ struct clutter
 	float bounciness;
 	float friction;
 	float radius;
+	sf::RectangleShape box;
 };
 
 
@@ -83,6 +84,16 @@ public:
 	sf::FloatRect screenRect;
 
 	sf::Image makeSilouette(sf::Image& original);
+	void handleOutOfScreen(clutter& obj);
+	void handleCollisionResponse(clutter& A, clutter& B);
+	void handleWindowResized(int width, int height);
+	void handleKeyPressed(const sf::Event::KeyEvent& keyEvent);
+	void handleMouseButtonReleased(const sf::Event::MouseButtonEvent& mouseButton);
+	void handleRightMouseButtonPressed(const sf::Vector2f& mousePos);
+	void handleMouseButtonPressed(const sf::Event::MouseButtonEvent& mouseButton);
+	bool handleEvents();
+	void handlePlayerCollision();
+	void renderGame();
 
 	GameClass(const ic::gameScreen _screen = ic::vm_sms);
 	~GameClass();
