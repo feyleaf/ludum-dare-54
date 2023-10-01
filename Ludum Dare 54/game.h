@@ -7,17 +7,14 @@ struct clutter
 {
 	bool isActive;
 	sf::Image image;
-	sf::Image silo;
 	sf::Texture texture;
 	sf::Sprite sprite;
 	float weight;
 	sf::Vector2f velocity;
 	sf::Vector2f accel;
-	sf::Vector2f centerPoint;
-	float bounciness;
+	float bounciness = 0.8f;
 	float friction;
-	float radius;
-	sf::RectangleShape box;
+	sf::FloatRect boundingBox;
 };
 
 
@@ -52,13 +49,15 @@ public:
 	sf::Clock dtClock;
 	float deltaTime = dtClock.restart().asSeconds();
 	float lastTime = deltaTime;
+	uint32_t randomSeed = static_cast<unsigned>(std::time(nullptr));
 	uint32_t randomCount = 0;
 	bool boxCollide = false;
 	bool pixelCollide = false;
 	bool isClicking = false;
-
+	void initializeClutterObjects();
 	void handleCollision(clutter& A, clutter& B);
 	void applyGravity(clutter& A, float _dt);
+	void handleClutterCollision(clutter& A, clutter& B);
 
 	sf::Sprite playerSprite;
 	sf::Texture playerTex;
@@ -83,7 +82,6 @@ public:
 
 	sf::FloatRect screenRect;
 
-	sf::Image makeSilouette(sf::Image& original);
 	void handleOutOfScreen(clutter& obj);
 	void handleCollisionResponse(clutter& A, clutter& B);
 	void handleWindowResized(int width, int height);
@@ -92,11 +90,12 @@ public:
 	void handleRightMouseButtonPressed(const sf::Vector2f& mousePos);
 	void handleMouseButtonPressed(const sf::Event::MouseButtonEvent& mouseButton);
 	bool handleEvents();
-	void handlePlayerCollision();
 	void renderGame();
 	void handlePlayerInput();
 	bool playerIsOnGround();
+	void updatePlayer();
 	void updatePlayerPosition();
+	void handlePlayerClutterCollision(clutter& player, clutter& object);
 
 	GameClass(const ic::gameScreen _screen = ic::vm_sms);
 	~GameClass();

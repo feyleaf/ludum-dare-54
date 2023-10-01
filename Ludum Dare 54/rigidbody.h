@@ -3,7 +3,7 @@
 
 #include "global.h"
 
-constexpr float GRAVITY = 9.81f;
+constexpr float GRAVITY = 98.81f;
 
 class RigidBody
 {
@@ -66,8 +66,9 @@ public:
             // Check if objects are moving towards each other
             if (dotProduct < 0) {
                 // Calculate new velocities
-                float combinedMass = other.mass+mass; // You might want to use actual mass here
+                float combinedMass = std::max(other.mass+mass, 1.0f); // You might want to use actual mass here
                 sf::Vector2f impulse = (-(1.0f + bounciness) * dotProduct) / combinedMass * collisionNormal;
+
                 velocity += impulse;
             }
         }
