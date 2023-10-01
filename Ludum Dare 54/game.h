@@ -15,6 +15,7 @@ struct clutter
 	float bounciness = 0.8f;
 	float friction;
 	sf::FloatRect boundingBox;
+	bool isJumping = false;
 };
 
 
@@ -58,6 +59,7 @@ public:
 	void handleCollision(clutter& A, clutter& B);
 	void applyGravity(clutter& A, float _dt);
 	void handleClutterCollision(clutter& A, clutter& B);
+	void handlePlayerCollisionResponse(clutter& player, clutter& obj);
 
 	sf::Sprite playerSprite;
 	sf::Texture playerTex;
