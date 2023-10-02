@@ -3,6 +3,10 @@
 
 #include "global.h"
 
+constexpr int FRESH = 0;
+constexpr int START = 1;
+
+
 class RigidObject
 {
 public:
@@ -81,13 +85,12 @@ public:
 	float friction = 1.0f;
 
 	PlayerClass() {};
-	void initialize(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, sf::Vector2f _pos, float _mass, float _bounce, float _friction)
+	void initialize(float _wait, cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, sf::Vector2f _pos, float _mass, float _bounce, float _friction)
 	{
 		//randomCount = ic::random(90, time(nullptr));
 		sprite.setTexture(tex);
 		sprite.setPosition(_pos);
 		sprite.setRotation(0.0f);
-
 		mass = _mass;
 		dimensions = _dimension;
 		friction = _friction;
@@ -101,12 +104,14 @@ public:
 		cpShapeSetFriction(boxShape, friction);
 		cpShapeSetElasticity(boxShape, bounciness);
 		cpSpaceAddShape(_space, boxShape);
+
 	}
+
 	void move(sf::Vector2f moveVector, bool isImpulse)
 	{
 		if (isImpulse)
 		{
-			cpBodyApplyImpulseAtWorldPoint(body, cpv(moveVector.x, moveVector.y*30.0f), cpv(origin.x - moveVector.x, origin.y));
+			cpBodyApplyImpulseAtWorldPoint(body, cpv(moveVector.x, moveVector.y*10.0f), cpv(origin.x - moveVector.x, origin.y));
 		}
 		else
 		{
@@ -183,7 +188,7 @@ public:
 			float newMass = item.mass * (scale * scale);
 			item.mass = newMass;
 			item.friction *= 2.0f;
-			item.bounciness /= 2.0f;
+			item.bounciness *= 2.0f;
 			// Create a new cpShape with different dimensions
 			cpShape* newShape = cpBoxShapeNew(item.getBody(), newWidth, newHeight, 0.0);
 			cpBodySetMass(oldBody, newMass);
@@ -296,6 +301,10 @@ public:
 	//handle player input
 	//handle rendering the scene on screen
 	//calculate the mouse positions
+	int gameState = FRESH;
+	sf::Texture splashTex;
+	sf::Sprite splashScreen;
+	float waitTime;
 
 	WindowClass applicationWindow;
 	sf::Clock dtClock;
@@ -316,9 +325,12 @@ public:
 
 	sf::Sprite playerSprite;
 	sf::Texture playerTex;
+	sf::Texture playerTex2;
 	sf::Image playerImg;
 	sf::Vector2f playerVelocity = { 2.0f, 2.0f };
 	clutter player;
+	sf::Texture winner;
+	sf::Sprite winnerSprite;
 
 	std::vector<clutter> clutterPile;
 

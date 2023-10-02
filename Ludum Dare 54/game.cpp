@@ -9,7 +9,7 @@ constexpr float JUMP_FORCE = 10.0f;
 
 void GameClass::initializeClutterObjects() {
     const int numObjects = 20;
-    myPlayer.initialize(spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(12.0f,  36.0f), 10.0f, 0.35f, 0.5f);
+    myPlayer.initialize(waitTime, spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(12.0f,  36.0f), 10.0f, 0.15f, 0.2f);
     for (int i = 0; i < numObjects; i++) {
         /*
         clutter cl;
@@ -196,13 +196,20 @@ void GameClass::handleMouseButtonReleased(const sf::Event::MouseButtonEvent& mou
 }
 
 void GameClass::handleKeyPressed(const sf::Event::KeyEvent& keyEvent) {
+    if (gameState == FRESH)
+    {
+        gameState = START;
+    }
     if (keyEvent.code == sf::Keyboard::F11) {
         if (applicationWindow.isFullScreen) {
-            applicationWindow.launchWindow("My Limit (feyleaf.com)");
+            applicationWindow.launchWindow("Clutterphobia");
         }
         else {
-            applicationWindow.launchFullScreen("My Limit Fullscreen (feyleaf.com)");
+            applicationWindow.launchFullScreen("Clutterphobia");
         }
+    }
+    if (keyEvent.code == sf::Keyboard::Escape) {
+        applicationWindow.app.close();
     }
 }
 
@@ -214,8 +221,13 @@ void GameClass::handleWindowResized(int width, int height) {
 
 GameClass::GameClass(const ic::gameScreen _screen)
 {
+    waitTime = 0.0f;
+    splashTex.loadFromFile("assets/game-art.png");
+    splashScreen.setTexture(splashTex);
+    splashScreen.setPosition(sf::Vector2f(0.0f, 0.0f));
     playerImg.loadFromFile("assets/player32x.png");
     playerTex.loadFromImage(playerImg);
+    playerTex2.loadFromFile("assets/player32b.png");
     playerSprite.setTexture(playerTex, true);
     playerSprite.setOrigin(0.0f, 0.0f);
     playerSprite.setPosition(32.0f, 32.0f);
@@ -230,6 +242,12 @@ GameClass::GameClass(const ic::gameScreen _screen)
     objectSprite.setOrigin(0.0f, 0.0f);
     objectSprite.setPosition(32.0f, 32.0f);
     objectVelocity = { -60.0f, 30.0f };
+
+    winner.loadFromFile("assets/winner.png");
+    winnerSprite.setTexture(winner);
+    winnerSprite.setScale(3.0f, 3.0f);
+    winnerSprite.setPosition(32.0f, 32.0f);
+
 
     initializeClutterObjects();
 
@@ -261,6 +279,15 @@ void GameClass::renderGame()
     applicationWindow.app.clear();
     applicationWindow.app.draw(structureSprite);
     // Render the RigidObject instances
+    int winState = 0;
+    for (auto& k : spaceWorld.objects)
+    {
+        if (k.isActive && !k.isFurniture)
+        {
+            winState++;
+        }
+    }
+
     for (auto& obj : spaceWorld.objects)
     {
         if (obj.isActive)
@@ -270,56 +297,77 @@ void GameClass::renderGame()
     }
 
     applicationWindow.app.draw(myPlayer.sprite);
+    if (winState < 1)
+    {
+        applicationWindow.app.draw(winnerSprite);
+    }
+
     applicationWindow.app.display();
 }
 
 bool GameClass::gameLoop()
 {
+    waitTime += deltaTime;
+    myPlayer.sprite.setTexture(playerTex, true);
     if (!handleEvents()) {
         return false; // Exit the game if the window is closed
     }
-    if (sf::Keyboard::isKeyPressed(suctionKey)) {
-        sf::Vector2f playerPosition = myPlayer.sprite.getPosition();/* Get the player's position */;
-        float suctionForce = 50.0f;/* Define the suction force */;
+    if (gameState == START)
+    {
+        if (sf::Keyboard::isKeyPressed(suctionKey)) {
+            myPlayer.sprite.setTexture(playerTex2, true);
+            sf::Vector2f playerPosition = myPlayer.sprite.getPosition();/* Get the player's position */;
+            float suctionForce = 90.0f;/* Define the suction force */;
 
-        for (auto& obj : spaceWorld.objects) {
-            if (!obj.isFurniture && obj.isActive)
-            {
-                obj.ApplyVacuumEffect(playerPosition, suctionForce);
-                float dist = ic::calcDist(obj.sprite.getPosition(), playerPosition) - ((myPlayer.sprite.getGlobalBounds().width+obj.sprite.getGlobalBounds().width)/2.0f);
-                if (dist <= 10.0f)
+            for (auto& obj : spaceWorld.objects) {
+                if (!obj.isFurniture && obj.isActive)
                 {
-                    spaceWorld.recreateBody(obj.getBody(), obj, 0.75f);
-                }
-                if (dist <= 7.0f)
-                {
-                    spaceWorld.recreateBody(obj.getBody(), obj, 0.50f);
-                }
-                if (dist <= 5.0f)
-                {
-                    spaceWorld.recreateBody(obj.getBody(), obj, 0.25f);
-                }
-                if (dist <= 3.0f)
-                {
-                    spaceWorld.recreateBody(obj.getBody(), obj, 0.15f);
-                }
-                if (dist <= 1.0f)
-                {
-                    spaceWorld.destroyBody(obj.getBody(), obj);
+                    obj.ApplyVacuumEffect(playerPosition, suctionForce);
+                    float dist = ic::calcDist(obj.sprite.getPosition(), playerPosition) - ((myPlayer.sprite.getGlobalBounds().width + obj.sprite.getGlobalBounds().width) / 2.0f);
+                    if (dist <= 7.0f)
+                    {
+                        spaceWorld.recreateBody(obj.getBody(), obj, 0.75f);
+                    }
+                    if (dist <= 6.0f)
+                    {
+                        spaceWorld.recreateBody(obj.getBody(), obj, 0.50f);
+                    }
+                    if (dist <= 4.0f)
+                    {
+                        spaceWorld.recreateBody(obj.getBody(), obj, 0.25f);
+                    }
+                    if (dist <= 2.0f)
+                    {
+                        spaceWorld.recreateBody(obj.getBody(), obj, 0.15f);
+                    }
+                    if (dist <= 1.0f)
+                    {
+                        spaceWorld.destroyBody(obj.getBody(), obj);
+                    }
                 }
             }
         }
+
+
+        deltaTime = dtClock.restart().asSeconds();
+
+        updatePlayer();
+        spaceWorld.updateWorld(myPlayer, deltaTime);
+
+        // Update player and handle player-object collisions
+
+
+        // Render the game
+        renderGame();
     }
-    deltaTime = dtClock.restart().asSeconds();
-
-    updatePlayer();
-    spaceWorld.updateWorld(myPlayer, deltaTime);
-
-    // Update player and handle player-object collisions
-
-    
-    // Render the game
-    renderGame();
-    spaceWorld.renderWorld(myPlayer, applicationWindow.app);
+    else
+    {
+        deltaTime = dtClock.restart().asSeconds();
+        waitTime = deltaTime;
+        applicationWindow.app.clear();
+        applicationWindow.app.draw(splashScreen);
+        applicationWindow.app.display();
+    }
+//    spaceWorld.renderWorld(myPlayer, applicationWindow.app);
     return true;
 }
