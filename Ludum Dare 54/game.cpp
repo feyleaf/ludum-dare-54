@@ -9,7 +9,7 @@ constexpr float JUMP_FORCE = 10.0f;
 
 void GameClass::initializeClutterObjects() {
     const int numObjects = 20;
-    myPlayer.initialize(spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(120.0f,  32.0f), 20.0f, 0.35f, 0.8f);
+    myPlayer.initialize(spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(12.0f,  36.0f), 10.0f, 0.35f, 0.5f);
     for (int i = 0; i < numObjects; i++) {
         /*
         clutter cl;
@@ -147,16 +147,6 @@ bool GameClass::playerIsOnGround() {
         return true;
     }
 
-    for (const auto& clutterObj : clutterPile) {
-        if (playerBounds.intersects(clutterObj.boundingBox)) {
-            // You can adjust this threshold value as needed to determine when the player is on top of a clutter object
-            float verticalThreshold = 10.0f;
-            if (playerBounds.top + playerBounds.height >= clutterObj.boundingBox.top - verticalThreshold) {
-                return true;
-            }
-        }
-    }
-
     return false;
 }
 void GameClass::updatePlayer() {
@@ -171,12 +161,6 @@ bool GameClass::handleEvents() {
         case sf::Event::Closed:
             applicationWindow.app.close();
             return false;
-        case sf::Event::MouseButtonPressed:
-            handleMouseButtonPressed(event.mouseButton);
-            break;
-        case sf::Event::MouseButtonReleased:
-            handleMouseButtonReleased(event.mouseButton);
-            break;
         case sf::Event::KeyPressed:
             handleKeyPressed(event.key);
             break;
@@ -188,21 +172,6 @@ bool GameClass::handleEvents() {
         }
     }
     return true;
-}
-
-void GameClass::handleMouseButtonPressed(const sf::Event::MouseButtonEvent& mouseButton) {
-    isClicking = true;
-    sf::Vector2f mousePos = applicationWindow.transformMouse(applicationWindow.app);
-
-    if (mouseButton.button == sf::Mouse::Left) {
-        for (auto& k : clutterPile) {
-            k.sprite.setPosition(sf::Vector2f((float)(ic::random(randomCount++, randomSeed) % 156) + 64.0f, (float)(ic::random(randomCount++, randomSeed) % 102) + 64.0f));
-            k.velocity = { 0.0f, 0.0f };
-        }
-    }
-    else if (mouseButton.button == sf::Mouse::Right) {
-        handleRightMouseButtonPressed(mousePos);
-    }
 }
 
 void GameClass::handleRightMouseButtonPressed(const sf::Vector2f& mousePos) {
@@ -294,7 +263,10 @@ void GameClass::renderGame()
     // Render the RigidObject instances
     for (auto& obj : spaceWorld.objects)
     {
-        applicationWindow.app.draw(obj.sprite);
+        if (obj.isActive)
+        {
+            applicationWindow.app.draw(obj.sprite);
+        }
     }
 
     applicationWindow.app.draw(myPlayer.sprite);
@@ -308,28 +280,32 @@ bool GameClass::gameLoop()
     }
     if (sf::Keyboard::isKeyPressed(suctionKey)) {
         sf::Vector2f playerPosition = myPlayer.sprite.getPosition();/* Get the player's position */;
-        float suctionForce = 100.0f;/* Define the suction force */;
+        float suctionForce = 50.0f;/* Define the suction force */;
 
         for (auto& obj : spaceWorld.objects) {
-            if (!obj.isFurniture)
+            if (!obj.isFurniture && obj.isActive)
             {
                 obj.ApplyVacuumEffect(playerPosition, suctionForce);
-                float dist = ic::calcDist(obj.sprite.getPosition(), playerPosition);
-                if (dist < 40.0f)
+                float dist = ic::calcDist(obj.sprite.getPosition(), playerPosition) - ((myPlayer.sprite.getGlobalBounds().width+obj.sprite.getGlobalBounds().width)/2.0f);
+                if (dist <= 10.0f)
                 {
                     spaceWorld.recreateBody(obj.getBody(), obj, 0.75f);
                 }
-                if (dist < 32.0f)
+                if (dist <= 7.0f)
                 {
                     spaceWorld.recreateBody(obj.getBody(), obj, 0.50f);
                 }
-                if (dist < 26.0f)
+                if (dist <= 5.0f)
                 {
                     spaceWorld.recreateBody(obj.getBody(), obj, 0.25f);
                 }
-                if (dist < 18.0f)
+                if (dist <= 3.0f)
                 {
                     spaceWorld.recreateBody(obj.getBody(), obj, 0.15f);
+                }
+                if (dist <= 1.0f)
+                {
+                    spaceWorld.destroyBody(obj.getBody(), obj);
                 }
             }
         }

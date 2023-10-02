@@ -7,6 +7,7 @@ class RigidObject
 {
 public:
 	bool isFurniture = false;
+	bool isActive = true;
 	sf::Sprite sprite;
 	sf::FloatRect dimensions;
 	sf::Vector2f origin;
@@ -19,6 +20,7 @@ public:
 	RigidObject(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, sf::Vector2f _pos, float _mass, float _bounce, float _friction)
 	{
 		isFurniture = false;
+		isActive = true;
 		rotation = 0.0f;
 		//randomCount = ic::random(90, time(nullptr));
 		sprite.setTexture(tex);
@@ -198,6 +200,10 @@ public:
 			item.sprite.setScale(scale, scale);
 		}
 	}
+	void destroyBody(cpBody* oldBody, RigidObject& item)
+	{
+			item.isActive = false;
+	}
 
 	void addRigidObject(RigidObject& obj)
 	{
@@ -215,12 +221,15 @@ public:
 
 		for (auto& k : objects)
 		{
-			cpBodyUpdatePosition(k.getBody(), _deltaTime);
-//			cpBodySetForce(k.getBody(), gravityVector);
-			cpVect vec = cpBodyGetPosition(k.getBody());
-			k.sprite.setPosition(vec.x, vec.y);
-			float angle = cpBodyGetAngle(k.getBody());
-			k.sprite.setRotation(angle * 180 / PI);
+			if (k.isActive)
+			{
+				cpBodyUpdatePosition(k.getBody(), _deltaTime);
+				//			cpBodySetForce(k.getBody(), gravityVector);
+				cpVect vec = cpBodyGetPosition(k.getBody());
+				k.sprite.setPosition(vec.x, vec.y);
+				float angle = cpBodyGetAngle(k.getBody());
+				k.sprite.setRotation(angle * 180 / PI);
+			}
 		}
 		cpSpaceStep(space, _deltaTime);
 	}
@@ -229,7 +238,10 @@ public:
 	{
 		for (auto& k : objects)
 		{
-			_app.draw(k.sprite);
+			if (k.isActive)
+			{
+				_app.draw(k.sprite);
+			}
 		}
 		_app.draw(thePlayer.sprite);
 	}
