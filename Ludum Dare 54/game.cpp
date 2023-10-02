@@ -11,6 +11,7 @@ void GameClass::initializeClutterObjects() {
     const int numObjects = 10;
 
     for (int i = 0; i < numObjects; i++) {
+        /*
         clutter cl;
         cl.velocity = { 0.0f, 0.0f };
 
@@ -63,57 +64,10 @@ void GameClass::initializeClutterObjects() {
         cl.friction = 0.99f;
 
         clutterPile.push_back(cl);
-    }
-}
+        */
 
-void GameClass::updatePlayerPosition() {
-    
-    for (auto& k : clutterPile)
-    {
-        handlePlayerClutterCollision(player, k);
-    }
-    
-    player.sprite.move(player.velocity * deltaTime);
-    player.boundingBox = player.sprite.getGlobalBounds();
-    for (auto& k : clutterPile) {
-        if (player.boundingBox.intersects(k.boundingBox)) {
-            handlePlayerCollisionResponse(player, k);
-        }
-    }
-
-    handleOutOfScreen(player);
-}
-
-void GameClass::handleClutterCollision(clutter& A, clutter& B) {
-    if (A.boundingBox.intersects(B.boundingBox)) {
-        float overlapX = std::min(A.boundingBox.left + A.boundingBox.width, B.boundingBox.left + B.boundingBox.width) -
-            std::max(A.boundingBox.left, B.boundingBox.left);
-        float overlapY = std::min(A.boundingBox.top + A.boundingBox.height, B.boundingBox.top + B.boundingBox.height) -
-            std::max(A.boundingBox.top, B.boundingBox.top);
-
-        if (overlapX < overlapY) {
-            float pushX = overlapX / 2.0f;
-            A.sprite.move(-pushX, 0.0f);
-            B.sprite.move(pushX, 0.0f);
-            float totalWeight = A.weight + B.weight;
-            float newVelocityA = (A.weight * A.velocity.x + B.weight * B.velocity.x) / totalWeight;
-            float newVelocityB = (A.weight * A.velocity.x + B.weight * B.velocity.x) / totalWeight;
-            A.velocity.x = newVelocityA;
-            B.velocity.x = newVelocityB;
-        }
-        else {
-            float pushY = overlapY / 2.0f;
-            A.sprite.move(0.0f, -pushY);
-            B.sprite.move(0.0f, pushY);
-            float totalWeight = A.weight + B.weight;
-            float newVelocityA = (A.weight * A.velocity.y + B.weight * B.velocity.y) / totalWeight;
-            float newVelocityB = (A.weight * A.velocity.y + B.weight * B.velocity.y) / totalWeight;
-            A.velocity.y = newVelocityA;
-            B.velocity.y = newVelocityB;
-        }
-
-        A.boundingBox = A.sprite.getGlobalBounds();
-        B.boundingBox = B.sprite.getGlobalBounds();
+        RigidObject ob(spaceWorld.getSpace(), sf::FloatRect(0, 0, 32, 32), bearTexture, 10.0f, 1.0f, 0.5f);
+        spaceWorld.addRigidObject(ob);
     }
 }
 
@@ -155,97 +109,8 @@ bool GameClass::playerIsOnGround() {
 }
 void GameClass::updatePlayer() {
     handlePlayerInput();
-    applyGravity(player, deltaTime);
-    for (auto& k : clutterPile)
-    {
-        handlePlayerClutterCollision(player, k);
-    }
-    updatePlayerPosition();
 }
 
-void GameClass::handleCollisionResponse(clutter& A, clutter& B) {
-    sf::Vector2f relativeVelocity = A.velocity - B.velocity;
-    sf::Vector2f collisionNormal = ic::normalVector(B.sprite.getPosition() - A.sprite.getPosition());
-    float dotProduct = relativeVelocity.x * collisionNormal.x + relativeVelocity.y * collisionNormal.y;
-    float radiusA = 0.5f * (A.boundingBox.width);
-    float radiusB = 0.5f * (B.boundingBox.width);
-    float overlap = radiusA + radiusB - ic::calcMagnitude(A.sprite.getPosition() - B.sprite.getPosition());
-    sf::Vector2f separation = collisionNormal * (overlap / 2.0f);
-    A.sprite.move(separation);
-    B.sprite.move(-separation);
-    float combinedMass = A.weight + B.weight;
-    float impulseMagnitude = (-(1.0f + A.bounciness) * dotProduct) / std::max(combinedMass, 1.0f);
-    sf::Vector2f impulse = impulseMagnitude * collisionNormal;
-    A.velocity += impulse / std::max(A.weight, 1.0f);
-    B.velocity -= impulse / std::max(B.weight, 1.0f);
-}
-
-void GameClass::handlePlayerCollisionResponse(clutter& player, clutter& obj) {
-    sf::Vector2f relativeVelocity = player.velocity - obj.velocity;
-    sf::Vector2f collisionNormal = ic::normalVector(obj.sprite.getPosition() - player.sprite.getPosition());
-    float dotProduct = relativeVelocity.x * collisionNormal.x + relativeVelocity.y * collisionNormal.y;
-    float radiusA = 0.5f * (player.boundingBox.width);
-    float radiusB = 0.5f * (obj.boundingBox.width);
-    float overlap = radiusA + radiusB - ic::calcMagnitude(player.sprite.getPosition() - obj.sprite.getPosition());
-    sf::Vector2f separation = collisionNormal;// *(overlap / 2.0f);
-    //player.sprite.move(separation);
-    player.velocity = separation;
-    //float combinedMass = player.weight + obj.weight;
-    //float impulseMagnitude = (-(1.0f + player.bounciness) * dotProduct) / std::max(combinedMass, 1.0f);
-    //sf::Vector2f impulse = impulseMagnitude * collisionNormal;
-    //player.velocity += impulse / std::max(player.weight, 1.0f);
-}
-
-void GameClass::handleOutOfScreen(clutter& obj) {
-    const float screenWidth = static_cast<float>(SCREEN_WIDTH);
-    const float screenHeight = static_cast<float>(SCREEN_HEIGHT);
-
-    sf::Vector2f objPosition = obj.sprite.getPosition();
-    sf::FloatRect objBounds = obj.sprite.getGlobalBounds();
-
-    // Check left and right screen boundaries
-    if (objPosition.x < 0.0f) {
-        objPosition.x = 0.0f;
-        obj.velocity.x = -obj.velocity.x * obj.friction;
-    }
-    else if (objPosition.x + objBounds.width > screenWidth) {
-        objPosition.x = screenWidth - objBounds.width;
-        obj.velocity.x = -obj.velocity.x * obj.friction;
-    }
-
-    // Check top screen boundary (disable upward movement)
-    if (objPosition.y < 0.0f) {
-        objPosition.y = 0.0f;
-        obj.velocity.y = 0.0f;
-    }
-
-    // Check bottom screen boundary (objects sit stationary unless pushed)
-    if (objPosition.y + objBounds.height > screenHeight && !obj.isJumping) {
-        objPosition.y = screenHeight - objBounds.height;
-        obj.velocity.y = 0.0f; // Object sits stationary when it reaches the bottom
-    }
-
-    obj.sprite.setPosition(objPosition);
-}
-
-void GameClass::applyGravity(clutter& A, float _dt)
-{
-    const sf::FloatRect groundRect(0.0f, 190.0f, 256.0f, 10.0f);
-
-    // Check if A is above the ground
-    if (!A.sprite.getGlobalBounds().intersects(groundRect))
-    {
-        // Apply gravity
-        sf::Vector2f gravityVector(0.0f, GRAVITY);
-        A.velocity += gravityVector * _dt;
-    }
-    else
-    {
-        // If A is on or below the ground, reset acceleration and velocity in the y-axis
-        //A.accel.y = 0.0f;
-        A.velocity.y = 0.0f;
-    }
-}
 
 bool GameClass::handleEvents() {
     sf::Event event;
@@ -375,10 +240,12 @@ void GameClass::renderGame()
 {
     applicationWindow.app.clear();
     applicationWindow.app.draw(structureSprite);
-    for (auto& k : clutterPile)
+    // Render the RigidObject instances
+    for (auto& obj : spaceWorld.objects)
     {
-        applicationWindow.app.draw(k.sprite);
+        applicationWindow.app.draw(obj.sprite);
     }
+
     applicationWindow.app.draw(player.sprite);
     applicationWindow.app.display();
 }
@@ -390,75 +257,15 @@ bool GameClass::gameLoop()
     }
 
     deltaTime = dtClock.restart().asSeconds();
-    for (auto& k : clutterPile)
-    {
-        k.boundingBox.left = k.sprite.getPosition().x;
-        k.boundingBox.top = k.sprite.getPosition().y;
-    }
-    for (size_t iterk = 0; iterk < clutterPile.size(); iterk++) {
-        for (size_t iterl = iterk + 1; iterl < clutterPile.size(); iterl++) {
-            handleClutterCollision(clutterPile[iterk], clutterPile[iterl]);
-        }
-    }
+
+    spaceWorld.updateWorld(deltaTime);
 
     // Update player and handle player-object collisions
     updatePlayer();
 
-    // Update clutter objects
-    for (auto& k : clutterPile) {
-        applyGravity(k, deltaTime);
-        k.velocity.x *= k.friction;
-        k.velocity += k.accel * deltaTime;
-        k.velocity.x = std::min(k.velocity.x, 30.0f);
-        k.velocity.y = std::min(k.velocity.y, 30.0f);
-        if (std::isfinite(k.velocity.x) && std::isfinite(k.velocity.y)) {
-            k.sprite.move(k.velocity * deltaTime);
-        }
-        handleOutOfScreen(k);
-    }
-
+    
     // Render the game
     renderGame();
-
+    spaceWorld.renderWorld(applicationWindow.app);
     return true;
-}
-
-void GameClass::handlePlayerClutterCollision(clutter& _player, clutter& object) {
-    if (_player.boundingBox.intersects(object.boundingBox)) {
-        // Calculate overlap and collision direction
-        float overlapX = std::min(_player.boundingBox.left + _player.boundingBox.width, object.boundingBox.left + object.boundingBox.width) -
-            std::max(_player.boundingBox.left, object.boundingBox.left);
-        float overlapY = std::min(_player.boundingBox.top + _player.boundingBox.height, object.boundingBox.top + object.boundingBox.height) -
-            std::max(_player.boundingBox.top, object.boundingBox.top);
-
-        if (overlapX < overlapY) {
-            // Resolve the collision in the x-direction
-            float pushX = overlapX / 2.0f;
-
-            // Move objects apart in the x-direction
-            _player.sprite.move(-pushX, 0.0f);
-            object.sprite.move(pushX, 0.0f);
-
-            // Adjust velocities if needed
-
-            // Update bounding boxes
-            _player.boundingBox = _player.sprite.getGlobalBounds();
-            object.boundingBox = object.sprite.getGlobalBounds();
-        }
-        else {
-            // Resolve the collision in the y-direction
-            float pushY = overlapY / 2.0f;
-
-            // Move objects apart in the y-direction
-            _player.sprite.move(0.0f, -pushY);
-            object.sprite.move(0.0f, pushY);
-
-            // Adjust velocities if needed
-            // ...
-
-            // Update bounding boxes
-            _player.boundingBox = player.sprite.getGlobalBounds();
-            object.boundingBox = object.sprite.getGlobalBounds();
-        }
-    }
 }

@@ -67,6 +67,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
+#include "chipmunk/chipmunk.h"
 #include <iostream>
 #include <fstream>
 #include <math.h>

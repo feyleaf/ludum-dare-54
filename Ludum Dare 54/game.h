@@ -3,6 +3,99 @@
 
 #include "global.h"
 
+class RigidObject
+{
+public:
+	sf::Sprite sprite;
+	sf::FloatRect dimensions;
+	sf::Vector2f origin;
+	sf::Vector2f position;
+	float rotation;
+	float bounciness;
+	float mass;
+	float friction;
+
+	RigidObject(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, float _mass, float _bounce, float _friction)
+	{
+		body = cpBodyAlloc();
+		sprite.setTexture(tex);
+		sprite.setPosition(sf::Vector2f(50.0f, 100.0f));
+		sprite.setRotation(0.0f);
+
+		mass = _mass;
+		dimensions = _dimension;
+		friction = _friction;
+		bounciness = _bounce;
+		origin = { dimensions.getSize().x / 2.0f, dimensions.getSize().y / 2.0f };
+		sprite.setOrigin(origin);
+		cpFloat moment = cpMomentForBox(mass, dimensions.width, dimensions.height);
+		cpBody* body = cpSpaceAddBody(_space, cpBodyNew(mass, moment));
+		cpBodySetPosition(body, cpv(sprite.getPosition().x, sprite.getPosition().y));
+		cpShape* boxShape = cpBoxShapeNew(body, dimensions.width, dimensions.height, 0.0);
+		cpShapeSetFriction(boxShape, friction);
+		cpShapeSetElasticity(boxShape, bounciness);
+		cpSpaceAddShape(_space, boxShape);
+	}
+
+	cpBody* getBody() const { return body; }
+private:
+	cpBody* body;
+};
+
+class SpaceClass
+{
+public:
+	cpVect gravityVector;
+
+
+	SpaceClass() {
+		space = cpSpaceNew();
+		gravityVector = cpv(0, 98.1f);
+		cpSpaceSetGravity(space, gravityVector);
+		cpBody* staticBody = cpSpaceGetStaticBody(space);
+		// Create a ground segment
+		cpVect groundA = cpv(-320, -240);
+		cpVect groundB = cpv(320, -240);
+		cpShape* ground = cpSegmentShapeNew(staticBody, groundA, groundB, 0.0);
+		cpShapeSetFriction(ground, 1.0);
+		cpShapeSetElasticity(ground, 0.5);
+		cpSpaceAddShape(space, ground);
+	}
+
+	void addRigidObject(RigidObject& obj)
+	{
+		objects.push_back(obj);
+	}
+
+	void updateWorld(float _deltaTime)
+	{
+		for (auto& k : objects)
+		{
+			cpBodySetForce(k.getBody(), gravityVector);
+			cpVect vec = cpBodyGetPosition(k.getBody());
+			k.sprite.setPosition(vec.x, vec.y);
+			float angle = cpBodyGetAngle(k.getBody());
+			k.sprite.setRotation(angle * 180 / PI);
+		}
+		cpSpaceStep(space, _deltaTime);
+	}
+
+	void renderWorld(sf::RenderWindow& _app)
+	{
+		for (auto& k : objects)
+		{
+			_app.draw(k.sprite);
+		}
+	}
+
+	cpSpace* getSpace() { return space; }
+
+	std::vector<RigidObject> objects;
+
+
+private:
+	cpSpace* space;
+};
 struct clutter
 {
 	bool isActive;
@@ -56,10 +149,8 @@ public:
 	bool pixelCollide = false;
 	bool isClicking = false;
 	void initializeClutterObjects();
-	void handleCollision(clutter& A, clutter& B);
-	void applyGravity(clutter& A, float _dt);
-	void handleClutterCollision(clutter& A, clutter& B);
-	void handlePlayerCollisionResponse(clutter& player, clutter& obj);
+
+	SpaceClass spaceWorld;
 
 	sf::Sprite playerSprite;
 	sf::Texture playerTex;
@@ -84,8 +175,6 @@ public:
 
 	sf::FloatRect screenRect;
 
-	void handleOutOfScreen(clutter& obj);
-	void handleCollisionResponse(clutter& A, clutter& B);
 	void handleWindowResized(int width, int height);
 	void handleKeyPressed(const sf::Event::KeyEvent& keyEvent);
 	void handleMouseButtonReleased(const sf::Event::MouseButtonEvent& mouseButton);
@@ -96,8 +185,6 @@ public:
 	void handlePlayerInput();
 	bool playerIsOnGround();
 	void updatePlayer();
-	void updatePlayerPosition();
-	void handlePlayerClutterCollision(clutter& player, clutter& object);
 
 	GameClass(const ic::gameScreen _screen = ic::vm_sms);
 	~GameClass();
