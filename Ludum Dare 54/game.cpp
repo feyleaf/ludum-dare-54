@@ -9,7 +9,7 @@ constexpr float JUMP_FORCE = 10.0f;
 
 void GameClass::initializeClutterObjects() {
     const int numObjects = 20;
-    myPlayer.initialize(spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(120.0f,  32.0f), 40.0f, 0.15f, 0.6f);
+    myPlayer.initialize(spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(120.0f,  32.0f), 20.0f, 0.35f, 0.8f);
     for (int i = 0; i < numObjects; i++) {
         /*
         clutter cl;
@@ -73,6 +73,7 @@ void GameClass::initializeClutterObjects() {
         int selection = ic::random(randomCount++, time(nullptr)) % 15;
         sf::FloatRect boreRect;
         sf::Texture* boreTex;
+        bool furn = false;
         switch (selection)
         {
         case 0:
@@ -83,6 +84,7 @@ void GameClass::initializeClutterObjects() {
         case 2:
             boreRect = sf::FloatRect(0, 0, 64, 37);
             boreTex = &couchTex;
+            furn = true;
             break;
         case 3:
         case 4:
@@ -93,6 +95,7 @@ void GameClass::initializeClutterObjects() {
         case 6:
             boreRect = sf::FloatRect(0, 0, 39, 26);
             boreTex = &tableTex;
+            furn = true;
             break;
         case 7:
         default:
@@ -101,7 +104,9 @@ void GameClass::initializeClutterObjects() {
             break;
         }
 
-        RigidObject ob(spaceWorld.getSpace(), boreRect, *boreTex, posVector, 10.0f, 0.05f, 0.5f);
+        RigidObject ob(spaceWorld.getSpace(), boreRect, *boreTex, posVector, 10.0f, 0.05f, 1.0f);
+        if (furn) { ob.isFurniture = true; }
+        furn = false;
         spaceWorld.addRigidObject(ob);
     }
 }
@@ -301,7 +306,34 @@ bool GameClass::gameLoop()
     if (!handleEvents()) {
         return false; // Exit the game if the window is closed
     }
+    if (sf::Keyboard::isKeyPressed(suctionKey)) {
+        sf::Vector2f playerPosition = myPlayer.sprite.getPosition();/* Get the player's position */;
+        float suctionForce = 100.0f;/* Define the suction force */;
 
+        for (auto& obj : spaceWorld.objects) {
+            if (!obj.isFurniture)
+            {
+                obj.ApplyVacuumEffect(playerPosition, suctionForce);
+                float dist = ic::calcDist(obj.sprite.getPosition(), playerPosition);
+                if (dist < 40.0f)
+                {
+                    spaceWorld.recreateBody(obj.getBody(), obj, 0.75f);
+                }
+                if (dist < 32.0f)
+                {
+                    spaceWorld.recreateBody(obj.getBody(), obj, 0.50f);
+                }
+                if (dist < 26.0f)
+                {
+                    spaceWorld.recreateBody(obj.getBody(), obj, 0.25f);
+                }
+                if (dist < 18.0f)
+                {
+                    spaceWorld.recreateBody(obj.getBody(), obj, 0.15f);
+                }
+            }
+        }
+    }
     deltaTime = dtClock.restart().asSeconds();
 
     updatePlayer();

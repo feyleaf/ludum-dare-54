@@ -6,6 +6,7 @@
 class RigidObject
 {
 public:
+	bool isFurniture = false;
 	sf::Sprite sprite;
 	sf::FloatRect dimensions;
 	sf::Vector2f origin;
@@ -17,6 +18,7 @@ public:
 
 	RigidObject(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, sf::Vector2f _pos, float _mass, float _bounce, float _friction)
 	{
+		isFurniture = false;
 		rotation = 0.0f;
 		//randomCount = ic::random(90, time(nullptr));
 		sprite.setTexture(tex);
@@ -37,8 +39,28 @@ public:
 		cpShapeSetElasticity(boxShape, bounciness);
 		cpSpaceAddShape(_space, boxShape);
 	}
+	// Function to apply vacuum cleaner effect
+	void ApplyVacuumEffect(const sf::Vector2f& playerPosition, float suctionForce)
+	{
+		if (!isFurniture)
+		{
+			// Calculate the direction from the object to the player
+			sf::Vector2f direction = playerPosition - sprite.getPosition();
+
+			// Calculate the unit vector (normalized direction)
+			sf::Vector2f unitVector = direction / std::sqrt(direction.x * direction.x + direction.y * direction.y);
+
+			// Apply a force in the direction of the unit vector
+			cpVect force = cpv(unitVector.x * suctionForce, unitVector.y * suctionForce);
+			cpBodyApplyForceAtWorldPoint(body, force, cpv(origin.x, origin.y));
+
+		}
+	}
+
 
 	cpBody* getBody() const { return body; }
+	cpShape* getShape() const { return boxShape; }
+	void setShape(cpShape* newShape) { boxShape = newShape; }
 private:
 	cpBody* body;
 	cpShape* boxShape;
@@ -82,7 +104,7 @@ public:
 	{
 		if (isImpulse)
 		{
-			cpBodyApplyImpulseAtWorldPoint(body, cpv(moveVector.x, moveVector.y*50.0f), cpv(origin.x - moveVector.x, origin.y));
+			cpBodyApplyImpulseAtWorldPoint(body, cpv(moveVector.x, moveVector.y*30.0f), cpv(origin.x - moveVector.x, origin.y));
 		}
 		else
 		{
@@ -148,6 +170,33 @@ public:
 		cpShapeSetElasticity(ceiling, 0.5);
 		cpSpaceAddShape(space, ceiling);
 
+	}
+
+	void recreateBody(cpBody* oldBody, RigidObject& item, float scale)
+	{
+		if (item.sprite.getScale().x > scale)
+		{
+			float newWidth = item.sprite.getGlobalBounds().width * scale;
+			float newHeight = item.sprite.getGlobalBounds().height * scale;
+			float newMass = item.mass * (scale * scale);
+			item.mass = newMass;
+			item.friction *= 2.0f;
+			item.bounciness /= 2.0f;
+			// Create a new cpShape with different dimensions
+			cpShape* newShape = cpBoxShapeNew(item.getBody(), newWidth, newHeight, 0.0);
+			cpBodySetMass(oldBody, newMass);
+			cpShapeSetFriction(newShape, item.friction);
+			cpShapeSetElasticity(newShape, item.bounciness);
+
+			// Remove the old shape and add the new shape to the same body
+			cpSpaceRemoveShape(space, item.getShape());
+			cpSpaceAddShape(space, newShape);
+
+			// You can free the old shape if it's no longer needed
+			cpShapeFree(item.getShape());
+			item.setShape(newShape);
+			item.sprite.setScale(scale, scale);
+		}
 	}
 
 	void addRigidObject(RigidObject& obj)
@@ -247,6 +296,10 @@ public:
 	bool isClicking = false;
 	void initializeClutterObjects();
 
+	sf::Keyboard::Key suctionKey = sf::Keyboard::V;
+
+	// Define the strength of the suction
+	float suctionStrength = 1000.0f;
 	SpaceClass spaceWorld;
 
 	sf::Sprite playerSprite;
