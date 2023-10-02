@@ -10,16 +10,58 @@ public:
 	sf::FloatRect dimensions;
 	sf::Vector2f origin;
 	sf::Vector2f position;
-	float rotation;
-	float bounciness;
-	float mass;
-	float friction;
+	float rotation = 0.0f;
+	float bounciness = 0.0f;
+	float mass = 1.0f;
+	float friction = 1.0f;
 
-	RigidObject(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, float _mass, float _bounce, float _friction)
+	RigidObject(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, sf::Vector2f _pos, float _mass, float _bounce, float _friction)
 	{
-		body = cpBodyAlloc();
+		rotation = 0.0f;
+		//randomCount = ic::random(90, time(nullptr));
 		sprite.setTexture(tex);
-		sprite.setPosition(sf::Vector2f(50.0f, 100.0f));
+		sprite.setPosition(_pos);
+		sprite.setRotation(rotation);
+
+		mass = _mass;
+		dimensions = _dimension;
+		friction = _friction;
+		bounciness = _bounce;
+		origin = { dimensions.getSize().x / 2.0f, dimensions.getSize().y / 2.0f };
+		sprite.setOrigin(origin);
+		cpFloat moment = cpMomentForBox(mass, dimensions.width, dimensions.height);
+		body = cpSpaceAddBody(_space, cpBodyNew(mass, moment));
+		cpBodySetPosition(body, cpv(_pos.x, _pos.y));
+		boxShape = cpBoxShapeNew(body, dimensions.width, dimensions.height, 0.0);
+		cpShapeSetFriction(boxShape, friction);
+		cpShapeSetElasticity(boxShape, bounciness);
+		cpSpaceAddShape(_space, boxShape);
+	}
+
+	cpBody* getBody() const { return body; }
+private:
+	cpBody* body;
+	cpShape* boxShape;
+};
+
+class PlayerClass
+{
+public:
+	sf::Sprite sprite;
+	sf::FloatRect dimensions;
+	sf::Vector2f origin;
+	sf::Vector2f position;
+	float rotation = 0.0f;
+	float bounciness = 0.0f;
+	float mass = 1.0f;
+	float friction = 1.0f;
+
+	PlayerClass() {};
+	void initialize(cpSpace* _space, sf::FloatRect _dimension, sf::Texture& tex, sf::Vector2f _pos, float _mass, float _bounce, float _friction)
+	{
+		//randomCount = ic::random(90, time(nullptr));
+		sprite.setTexture(tex);
+		sprite.setPosition(_pos);
 		sprite.setRotation(0.0f);
 
 		mass = _mass;
@@ -29,24 +71,51 @@ public:
 		origin = { dimensions.getSize().x / 2.0f, dimensions.getSize().y / 2.0f };
 		sprite.setOrigin(origin);
 		cpFloat moment = cpMomentForBox(mass, dimensions.width, dimensions.height);
-		cpBody* body = cpSpaceAddBody(_space, cpBodyNew(mass, moment));
-		cpBodySetPosition(body, cpv(sprite.getPosition().x, sprite.getPosition().y));
-		cpShape* boxShape = cpBoxShapeNew(body, dimensions.width, dimensions.height, 0.0);
+		body = cpSpaceAddBody(_space, cpBodyNew(mass, moment));
+		cpBodySetPosition(body, cpv(_pos.x, _pos.y));
+		boxShape = cpBoxShapeNew(body, dimensions.width, dimensions.height, 0.0);
 		cpShapeSetFriction(boxShape, friction);
 		cpShapeSetElasticity(boxShape, bounciness);
 		cpSpaceAddShape(_space, boxShape);
 	}
+	void move(sf::Vector2f moveVector, bool isImpulse)
+	{
+		if (isImpulse)
+		{
+			cpBodyApplyImpulseAtWorldPoint(body, cpv(moveVector.x, moveVector.y*50.0f), cpv(origin.x - moveVector.x, origin.y));
+		}
+		else
+		{
+			cpBodyApplyImpulseAtWorldPoint(body, cpv(moveVector.x, moveVector.y), cpv(origin.x - moveVector.x, origin.y - moveVector.y));
+		}
+		float maxRotation = 30.0f;  // Adjust as needed
+		float currentRotation = cpBodyGetAngle(body);
+		if (currentRotation > maxRotation) {
+			cpBodySetAngle(body, maxRotation);
+		}
+		else if (currentRotation < -maxRotation) {
+			cpBodySetAngle(body, -maxRotation);
+		}
+		if (cpBodyGetAngularVelocity(body)>0.5f)
+		{
+			cpBodySetAngle(body, 0.0f);
+		}
 
-	cpBody* getBody() const { return body; }
+		// Apply damping to rotational velocity
+		cpFloat damping = 0.9f;  // Adjust as needed
+		cpBodySetAngularVelocity(body, cpBodyGetAngularVelocity(body) * damping);
+	}
+	cpBody* getBody() { return body; }
 private:
-	cpBody* body;
+	cpBody* body = nullptr;
+	cpShape* boxShape = nullptr;
 };
 
 class SpaceClass
 {
 public:
 	cpVect gravityVector;
-
+	//PlayerClass thePlayer;
 
 	SpaceClass() {
 		space = cpSpaceNew();
@@ -54,12 +123,31 @@ public:
 		cpSpaceSetGravity(space, gravityVector);
 		cpBody* staticBody = cpSpaceGetStaticBody(space);
 		// Create a ground segment
-		cpVect groundA = cpv(-320, -240);
-		cpVect groundB = cpv(320, -240);
+		cpVect groundA = cpv(0, 190);
+		cpVect groundB = cpv(256, 192);
 		cpShape* ground = cpSegmentShapeNew(staticBody, groundA, groundB, 0.0);
 		cpShapeSetFriction(ground, 1.0);
 		cpShapeSetElasticity(ground, 0.5);
 		cpSpaceAddShape(space, ground);
+		cpVect wallRA = cpv(250, 0);
+		cpVect wallRB = cpv(256, 192);
+		cpShape* wallR = cpSegmentShapeNew(staticBody, wallRA, wallRB, 0.0);
+		cpShapeSetFriction(wallR, 1.0);
+		cpShapeSetElasticity(wallR, 0.5);
+		cpSpaceAddShape(space, wallR);
+		cpVect wallLA = cpv(0, 0);
+		cpVect wallLB = cpv(6, 192);
+		cpShape* wallL = cpSegmentShapeNew(staticBody, wallLA, wallLB, 0.0);
+		cpShapeSetFriction(wallL, 1.0);
+		cpShapeSetElasticity(wallL, 0.5);
+		cpSpaceAddShape(space, wallL);
+		cpVect ceilA = cpv(0, 0);
+		cpVect ceilB = cpv(256, 2);
+		cpShape* ceiling = cpSegmentShapeNew(staticBody, ceilA, ceilB, 0.0);
+		cpShapeSetFriction(ceiling, 1.0);
+		cpShapeSetElasticity(ceiling, 0.5);
+		cpSpaceAddShape(space, ceiling);
+
 	}
 
 	void addRigidObject(RigidObject& obj)
@@ -67,11 +155,19 @@ public:
 		objects.push_back(obj);
 	}
 
-	void updateWorld(float _deltaTime)
+	void updateWorld(PlayerClass& thePlayer, float _deltaTime)
 	{
+		cpBodyUpdatePosition(thePlayer.getBody(), _deltaTime);
+		//			cpBodySetForce(k.getBody(), gravityVector);
+		cpVect vec = cpBodyGetPosition(thePlayer.getBody());
+		thePlayer.sprite.setPosition(vec.x, vec.y);
+		float angle = cpBodyGetAngle(thePlayer.getBody());
+		thePlayer.sprite.setRotation(angle * 180 / PI);
+
 		for (auto& k : objects)
 		{
-			cpBodySetForce(k.getBody(), gravityVector);
+			cpBodyUpdatePosition(k.getBody(), _deltaTime);
+//			cpBodySetForce(k.getBody(), gravityVector);
 			cpVect vec = cpBodyGetPosition(k.getBody());
 			k.sprite.setPosition(vec.x, vec.y);
 			float angle = cpBodyGetAngle(k.getBody());
@@ -80,12 +176,13 @@ public:
 		cpSpaceStep(space, _deltaTime);
 	}
 
-	void renderWorld(sf::RenderWindow& _app)
+	void renderWorld(PlayerClass& thePlayer, sf::RenderWindow& _app)
 	{
 		for (auto& k : objects)
 		{
 			_app.draw(k.sprite);
 		}
+		_app.draw(thePlayer.sprite);
 	}
 
 	cpSpace* getSpace() { return space; }
@@ -174,6 +271,7 @@ public:
 	sf::Image structureImg;
 
 	sf::FloatRect screenRect;
+	PlayerClass myPlayer;
 
 	void handleWindowResized(int width, int height);
 	void handleKeyPressed(const sf::Event::KeyEvent& keyEvent);

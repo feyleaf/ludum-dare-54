@@ -4,12 +4,12 @@
 const int SCREEN_WIDTH = 256;
 const int SCREEN_HEIGHT = 192;
 
-constexpr float PLAYER_SPEED = 25.0f;
-constexpr float JUMP_FORCE = 20.0f;
+constexpr float PLAYER_SPEED = 0.5f;
+constexpr float JUMP_FORCE = 10.0f;
 
 void GameClass::initializeClutterObjects() {
-    const int numObjects = 10;
-
+    const int numObjects = 20;
+    myPlayer.initialize(spaceWorld.getSpace(), sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f), playerTex, sf::Vector2f(120.0f,  32.0f), 40.0f, 0.15f, 0.6f);
     for (int i = 0; i < numObjects; i++) {
         /*
         clutter cl;
@@ -66,25 +66,72 @@ void GameClass::initializeClutterObjects() {
         clutterPile.push_back(cl);
         */
 
-        RigidObject ob(spaceWorld.getSpace(), sf::FloatRect(0, 0, 32, 32), bearTexture, 10.0f, 1.0f, 0.5f);
+        randomCount++;
+        sf::Vector2f randomVector = { float(ic::random(randomCount++, 12345) % 5) * 21.25f, float(ic::random(randomCount++, 54321) % 5)*21.25f };
+        sf::Vector2f posVector = sf::Vector2f(50.0f, 100.0f) + randomVector;
+
+        int selection = ic::random(randomCount++, time(nullptr)) % 15;
+        sf::FloatRect boreRect;
+        sf::Texture* boreTex;
+        switch (selection)
+        {
+        case 0:
+        case 1:
+            boreRect = sf::FloatRect(0, 0, 22, 31);
+            boreTex = &bearTexture;
+            break;
+        case 2:
+            boreRect = sf::FloatRect(0, 0, 64, 37);
+            boreTex = &couchTex;
+            break;
+        case 3:
+        case 4:
+        case 5:
+            boreRect = sf::FloatRect(0, 0, 25, 17);
+            boreTex = &burritoTexture;
+            break;
+        case 6:
+            boreRect = sf::FloatRect(0, 0, 39, 26);
+            boreTex = &tableTex;
+            break;
+        case 7:
+        default:
+            boreRect = sf::FloatRect(0, 0, 30, 29);
+            boreTex = &objectTex;
+            break;
+        }
+
+        RigidObject ob(spaceWorld.getSpace(), boreRect, *boreTex, posVector, 10.0f, 0.05f, 0.5f);
         spaceWorld.addRigidObject(ob);
     }
 }
 
 void GameClass::handlePlayerInput() {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+        myPlayer.sprite.setScale(-1.0f, 1.0f);
         player.velocity.x = -PLAYER_SPEED; // Move left
     }
     else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+        myPlayer.sprite.setScale(1.0f, 1.0f);
         player.velocity.x = PLAYER_SPEED; // Move right
     }
     else {
         player.velocity.x = 0.0f; // Stop horizontal movement if no key is pressed
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && playerIsOnGround()) {
-        player.isJumping = true;
-        player.velocity.y = -6.0f*JUMP_FORCE; // Apply an upward force for jumping
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && !player.isJumping) {
+        player.velocity.y = -8.0f * JUMP_FORCE;
+        player.isJumping = true;// Apply an upward force for jumping
     }
+    else
+    {
+        player.velocity.y = 0.0f;
+        //player.isJumping = false;
+    }
+    if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+    {
+        player.isJumping = false;
+    }
+    myPlayer.move(player.velocity, player.isJumping);
 }
 
 bool GameClass::playerIsOnGround() {
@@ -188,13 +235,12 @@ void GameClass::handleKeyPressed(const sf::Event::KeyEvent& keyEvent) {
 void GameClass::handleWindowResized(int width, int height) {
     applicationWindow.renewView(width, height);
     screenRect = applicationWindow.canvas.canvasToRect();
-    // Handle window resized events if needed
 }
 
 
 GameClass::GameClass(const ic::gameScreen _screen)
 {
-    playerImg.loadFromFile("assets/sampleplayer.png");
+    playerImg.loadFromFile("assets/player32x.png");
     playerTex.loadFromImage(playerImg);
     playerSprite.setTexture(playerTex, true);
     playerSprite.setOrigin(0.0f, 0.0f);
@@ -246,7 +292,7 @@ void GameClass::renderGame()
         applicationWindow.app.draw(obj.sprite);
     }
 
-    applicationWindow.app.draw(player.sprite);
+    applicationWindow.app.draw(myPlayer.sprite);
     applicationWindow.app.display();
 }
 
@@ -258,14 +304,14 @@ bool GameClass::gameLoop()
 
     deltaTime = dtClock.restart().asSeconds();
 
-    spaceWorld.updateWorld(deltaTime);
+    updatePlayer();
+    spaceWorld.updateWorld(myPlayer, deltaTime);
 
     // Update player and handle player-object collisions
-    updatePlayer();
 
     
     // Render the game
     renderGame();
-    spaceWorld.renderWorld(applicationWindow.app);
+    spaceWorld.renderWorld(myPlayer, applicationWindow.app);
     return true;
 }
